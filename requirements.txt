@@ -1,0 +1,4 @@
+python-dotenv==1.0.0
+selenium==4.13.0
+PyChromeDevTools==0.4
+psutil==5.9.5
