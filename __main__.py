@@ -50,6 +50,18 @@ class Scraper(ChromDevWrapper):
                 break
             
         return new_rows_num
+    
+    def __get_clean_counters__(self, counter:str) -> int:
+        """ Convert counters like 4.5K or 4.5M to int """
+        
+        if "K" in counter:
+            counter = int(float(counter.replace("K", "")) * 1000)
+        elif "M" in counter:
+            counter = int(float(counter.replace("M", "")) * 1000000)
+        else:
+            counter = int(counter)
+            
+        return counter
         
     def search_profiles(self):
         """ Search specific keyword in the website and load required profiles """
@@ -133,7 +145,7 @@ class Scraper(ChromDevWrapper):
             
         return profiles_data
     
-    def get_profile_general_data(self, profile_link: str) -> dict:
+    def get_profile_details(self, profile_link: str) -> dict:
         """ Get general data of the current profile
         
         Args:
@@ -145,17 +157,101 @@ class Scraper(ChromDevWrapper):
                 "followers": int,
                 "following": int,
                 "likes": int,
-                "links": list (str)
+                "links": list (str),
+                "videos": [
+                    ...,
+                    {
+                        "link": str,
+                        "badge": str,
+                        "image": str,
+                        "views": str,
+                        "title": str
+                    }
+                ]
             }
         """
         
         selectors = {
-            "videos": '[data-e2e="user-post-item-list"] > div'
+            "video": {
+                "elem": '[data-e2e="user-post-item-list"] > div',
+                "link": 'a',
+                "badge": '[data-e2e="video-card-badge"]',
+                "image": 'picture > source',
+                "views": '[data-e2e="video-views"]',
+                "title": 'a[title]'
+            },
+            "following": '[data-e2e="following-count"]',
+            "followers": '[data-e2e="followers-count"]',
+            "likes": '[data-e2e="likes-count"]',
+            "links": '[data-e2e="user-bio"] + div a',
         }
+                
+        selector_video = selectors["video"]["elem"]
+        self.__load_content__(selector_video, MAX_VIDEOS, profile_link)
         
-        print("Loading profile general data...")
+        # Get counters
+        following = self.get_text(selectors["following"])
+        followers = self.get_text(selectors["followers"])
+        likes = self.get_text(selectors["likes"])
         
-        self.__load_content__(selectors["videos"], MAX_VIDEOS, profile_link)
+        # Fix counters
+        following = self.__get_clean_counters__(following)
+        followers = self.__get_clean_counters__(followers)
+        likes = self.__get_clean_counters__(likes)
+        
+        # Get links
+        links = self.get_attribs(selectors["links"], "href")
+        
+        # Count videos
+        videos_data = []
+        videos_num = self.count_elems(selector_video)
+        videos_views = 0
+        for video_index in range(videos_num):
+            
+            if video_index >= MAX_VIDEOS:
+                break
+            
+            video_data = {}
+            
+            selectors_sttribs = {
+                "link": 'href',
+                "image": 'src',
+            }
+            
+            selector_current_video = f'{selector_video}:nth-child({video_index + 1})'
+            for selector_name, selector_value in selectors["video"].items():
+                selector_elem = f'{selector_current_video} {selector_value}'
+                
+                # Skip elem selector
+                if selector_name == "elem":
+                    continue
+                
+                # Get elems attribs
+                if selector_name in selectors_sttribs:
+                    value = self.get_attrib(selector_elem, selectors_sttribs[selector_name])
+                else:
+                    value = self.get_text(selector_elem)
+                
+                video_data[selector_name] = value
+                
+            # Save video data
+            videos_data.append(video_data)
+            
+            # Fix views
+            video_data["views"] = self.__get_clean_counters__(video_data["views"])
+        
+            # Update videos reproduction
+            videos_views += video_data["views"]
+        
+        return {
+            "followers": followers,
+            "following": following,
+            "likes": likes,
+            "links": links,
+            "videos": videos_data,
+            "videos_num": videos_num,
+            "videos_views": videos_views,
+        }
     
     def get_profile_videos(self) -> list:
         """ Get videos (links and titles) of the current profile
@@ -174,9 +270,19 @@ class Scraper(ChromDevWrapper):
         self.search_profiles()
         profiles = scraper.get_profiles()
         for profile in profiles:
-            profile_general_data = self.get_profile_general_data(profile["link"])
+            
+            profile_index = profiles.index(profile) + 1
+            print(f"Profile {profile_index}/{len(profiles)}...")
+            
+            # Get detailed profile data
+            profile_details = self.get_profile_details(profile["link"])
+            
+            # Save profile details
+            profile = {**profile, **profile_details}            
             
             print()
+            
+        print()
         
         
 scraper = Scraper()
