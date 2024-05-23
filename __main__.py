@@ -44,6 +44,7 @@ class Scraper(ChromDevWrapper):
         
         with open(self.profiles_path, "w", newline='') as file:
             columns = [
+                "keywords",
                 "username",
                 "nickname",
                 "description",
@@ -347,6 +348,7 @@ class Scraper(ChromDevWrapper):
         with open(self.profiles_path, "a", encoding="utf-8", newline='') as file:
             csv_file = csv.writer(file)
             row = [
+                KEYWORDS,
                 username,
                 nickname,
                 description,
