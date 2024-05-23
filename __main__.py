@@ -1,4 +1,5 @@
 import os
+import csv
 from time import sleep
 from dotenv import load_dotenv
 from libs.chrome_dev import ChromDevWrapper
@@ -8,6 +9,7 @@ KEYWORDS = os.getenv("KEYWORDS")
 CHROME_PATH = os.getenv("CHROME_PATH")
 MAX_USERS = int(os.getenv("MAX_USERS"))
 MAX_VIDEOS = int(os.getenv("MAX_VIDEOS"))
+DEBUG = os.getenv("DEBUG") == "True"
 
 
 class Scraper(ChromDevWrapper):
@@ -17,6 +19,63 @@ class Scraper(ChromDevWrapper):
         
         # Start chrome
         super().__init__(CHROME_PATH)
+        
+        # Csv paths
+        current_path = os.path.dirname(os.path.abspath(__file__))
+        self.profiles_path = os.path.join(current_path, "output", "profiles.csv")
+        self.videos_path = os.path.join(current_path, "output", "videos.csv")
+        
+        # Delete csv files in debug mode
+        if DEBUG:
+            if os.path.exists(self.profiles_path):
+                os.remove(self.profiles_path)
+            if os.path.exists(self.videos_path):
+                os.remove(self.videos_path)
+        
+        # Create initial csv files
+        self.__create_profiles_csv__()
+        self.__create_videos_csv__()
+        
+    def __create_profiles_csv__(self):
+        """ Create profiles csv file if not exists """
+        
+        if os.path.exists(self.profiles_path):
+            return None
+        
+        with open(self.profiles_path, "w", newline='') as file:
+            columns = [
+                "username",
+                "nickname",
+                "description",
+                "profile_link",
+                "followers",
+                "following",
+                "likes",
+                "links",
+                "videos_num",
+                "videos_views"
+            ]
+            csv_file = csv.writer(file)
+            csv_file.writerow(columns)
+            
+    def __create_videos_csv__(self):
+        """ Create videos csv file if not exists """
+        
+        if os.path.exists(self.profiles_path):
+            return None
+            
+        with open(self.videos_path, "w", newline='') as file:
+            columns = [
+                "username",
+                "link",
+                "badge",
+                "image",
+                "views",
+                "title"
+            ]
+            csv_file = csv.writer(file)
+            csv_file.writerow(columns)
+            
         
     def __load_content__(self, selector_elem: str, max_elem: int,
                          page_url: str = "") -> int:
@@ -71,10 +130,13 @@ class Scraper(ChromDevWrapper):
             "search_button": 'button[type="submit"]',
             "accounts_tab": '[aria-controls="tabs-0-panel-search_account"]'
         }
-        
+                
         print(f"Searching profiles with the keyword: {KEYWORDS}")
         
+        # Load page
         self.set_page("https://www.tiktok.com/")
+        
+        # Search in page
         sleep(3)
         self.send_data(selectors["search_bar"], KEYWORDS)
         sleep(1)
@@ -89,7 +151,6 @@ class Scraper(ChromDevWrapper):
             list: List of profiles
             [
                 {
-                    "link": str,
                     "username": str,
                     "nickname": str
                     "description": str,
@@ -110,6 +171,9 @@ class Scraper(ChromDevWrapper):
         print("Loading profiles...")
         
         profiles_found = self.__load_content__(selectors["row"], MAX_USERS)
+        if profiles_found > MAX_USERS:
+            profiles_found = MAX_USERS
+        
         print(f"Profiles loaded: {profiles_found}")
         
         print("Getting profiles data...")
@@ -139,6 +203,7 @@ class Scraper(ChromDevWrapper):
             # Clean profile data
             profile_data["nickname"] = profile_data["nickname"].split(" · ")[0].strip()
             profile_data["link"] = f'https://www.tiktok.com{profile_data["link"]}'
+            profile_data["description"] = profile_data["description"].strip().replace("\n", " ")
         
             # Save profile data
             profiles_data.append(profile_data)
@@ -176,7 +241,7 @@ class Scraper(ChromDevWrapper):
                 "elem": '[data-e2e="user-post-item-list"] > div',
                 "link": 'a',
                 "badge": '[data-e2e="video-card-badge"]',
-                "image": 'picture > source',
+                "image": 'img',
                 "views": '[data-e2e="video-views"]',
                 "title": 'a[title]'
             },
@@ -188,6 +253,10 @@ class Scraper(ChromDevWrapper):
                 
         selector_video = selectors["video"]["elem"]
         self.__load_content__(selector_video, MAX_VIDEOS, profile_link)
+        
+        # Set zoom and wait
+        self.set_zoom(0.1)
+        sleep(5)
         
         # Get counters
         following = self.get_text(selectors["following"])
@@ -265,24 +334,100 @@ class Scraper(ChromDevWrapper):
         """
         pass
     
+    def save_profile(self, username: str, nickname: str, description: str,
+                     profile_link: str, followers: int, following: int, likes: int, 
+                     links: list, videos_num: int, videos_views: int):
+        """ Save in csv profile data of a single user 
+        
+        Args:
+            username (str): Username of the profile
+            nickname (str): Nickname of the profile
+            description (str): Description of the profile
+            profile_link (str): Link of the profile
+            followers (int): Number of followers
+            following (int): Number of following
+            likes (int): Number of likes
+            links (list): List of links
+            videos_num (int): Number of videos
+            videos_views (int): Number of videos views
+        """
+        
+        with open(self.profiles_path, "a", encoding="utf-8", newline='') as file:
+            csv_file = csv.writer(file)
+            row = [
+                username,
+                nickname,
+                description,
+                profile_link,
+                followers,
+                following,
+                likes,
+                " | ".join(links),
+                videos_num,
+                videos_views
+            ]
+            csv_file.writerow(row)
+    
+    def save_videos(self, videos_data: list):
+        """ Save in csv video data of a single user 
+        
+        Args:
+            videos_data (list): List of videos
+            [
+                {
+                    "link": str,
+                    "badge": str,
+                    "image": str,
+                    "views": str,
+                    "title": str
+                },
+                ...
+            ]
+        """
+        
+        with open(self.videos_path, "a", encoding="utf-8", newline='') as file:
+            csv_file = csv.writer(file)
+            for video_data in videos_data:
+                row = [
+                    video_data["link"],
+                    video_data["badge"],
+                    video_data["image"],
+                    video_data["views"],
+                    video_data["title"]
+                ]
+                csv_file.writerow(row)
+    
     def autorun(self):
         
         self.search_profiles()
         profiles = scraper.get_profiles()
+        profiles_details = []
         for profile in profiles:
             
             profile_index = profiles.index(profile) + 1
-            print(f"Profile {profile_index}/{len(profiles)}...")
+            print(f"\tProfile {profile_index}/{len(profiles)} ({profile['username']})...")
             
             # Get detailed profile data
             profile_details = self.get_profile_details(profile["link"])
             
             # Save profile details
-            profile = {**profile, **profile_details}            
+            self.save_profile(
+                profile["username"],
+                profile["nickname"],
+                profile["description"],
+                profile["link"],
+                profile_details["followers"],
+                profile_details["following"],
+                profile_details["likes"],
+                profile_details["links"],
+                profile_details["videos_num"],
+                profile_details["videos_views"]
+            )
             
-            print()
-            
-        print()
+            # Save videos details
+            self.save_videos(profile_details["videos"])
+                        
+        print("Finished!")
         
         
 scraper = Scraper()
