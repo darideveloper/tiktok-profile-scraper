@@ -361,10 +361,11 @@ class Scraper(ChromDevWrapper):
             ]
             csv_file.writerow(row)
     
-    def save_videos(self, videos_data: list):
+    def save_videos(self, username: str, videos_data: list):
         """ Save in csv video data of a single user 
         
         Args:
+            username (str): Username of the profile
             videos_data (list): List of videos
             [
                 {
@@ -382,6 +383,7 @@ class Scraper(ChromDevWrapper):
             csv_file = csv.writer(file)
             for video_data in videos_data:
                 row = [
+                    username,
                     video_data["link"],
                     video_data["badge"],
                     video_data["image"],
@@ -416,7 +418,7 @@ class Scraper(ChromDevWrapper):
             )
             
             # Save videos details
-            self.save_videos(profile_details["videos"])
+            self.save_videos(profile["username"], profile_details["videos"])
                         
         print("Finished!")
         
