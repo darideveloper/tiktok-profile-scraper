@@ -35,6 +35,7 @@ class Scraper(ChromDevWrapper):
         # Create initial csv files
         self.__create_profiles_csv__()
         self.__create_videos_csv__()
+        print()
         
     def __create_profiles_csv__(self):
         """ Create profiles csv file if not exists """
@@ -61,7 +62,7 @@ class Scraper(ChromDevWrapper):
     def __create_videos_csv__(self):
         """ Create videos csv file if not exists """
         
-        if os.path.exists(self.profiles_path):
+        if os.path.exists(self.videos_path):
             return None
             
         with open(self.videos_path, "w", newline='') as file:
@@ -401,7 +402,6 @@ class Scraper(ChromDevWrapper):
         
         self.search_profiles()
         profiles = scraper.get_profiles()
-        profiles_details = []
         for profile in profiles:
             
             profile_index = profiles.index(profile) + 1
