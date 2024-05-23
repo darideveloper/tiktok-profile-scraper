@@ -35,7 +35,6 @@ class Scraper(ChromDevWrapper):
         # Create initial csv files
         self.__create_profiles_csv__()
         self.__create_videos_csv__()
-        print()
         
     def __create_profiles_csv__(self):
         """ Create profiles csv file if not exists """
@@ -52,7 +51,6 @@ class Scraper(ChromDevWrapper):
                 "followers",
                 "following",
                 "likes",
-                "links",
                 "videos_num",
                 "videos_views"
             ]
@@ -223,7 +221,6 @@ class Scraper(ChromDevWrapper):
                 "followers": int,
                 "following": int,
                 "likes": int,
-                "links": list (str),
                 "videos": [
                     ...,
                     {
@@ -249,7 +246,6 @@ class Scraper(ChromDevWrapper):
             "following": '[data-e2e="following-count"]',
             "followers": '[data-e2e="followers-count"]',
             "likes": '[data-e2e="likes-count"]',
-            "links": '[data-e2e="user-bio"] + div a',
         }
                 
         selector_video = selectors["video"]["elem"]
@@ -268,9 +264,6 @@ class Scraper(ChromDevWrapper):
         following = self.__get_clean_counters__(following)
         followers = self.__get_clean_counters__(followers)
         likes = self.__get_clean_counters__(likes)
-        
-        # Get links
-        links = self.get_attribs(selectors["links"], "href")
         
         # Count videos
         videos_data = []
@@ -317,7 +310,6 @@ class Scraper(ChromDevWrapper):
             "followers": followers,
             "following": following,
             "likes": likes,
-            "links": links,
             "videos": videos_data,
             "videos_num": videos_num,
             "videos_views": videos_views,
@@ -337,7 +329,7 @@ class Scraper(ChromDevWrapper):
     
     def save_profile(self, username: str, nickname: str, description: str,
                      profile_link: str, followers: int, following: int, likes: int, 
-                     links: list, videos_num: int, videos_views: int):
+                     videos_num: int, videos_views: int):
         """ Save in csv profile data of a single user 
         
         Args:
@@ -348,7 +340,6 @@ class Scraper(ChromDevWrapper):
             followers (int): Number of followers
             following (int): Number of following
             likes (int): Number of likes
-            links (list): List of links
             videos_num (int): Number of videos
             videos_views (int): Number of videos views
         """
@@ -363,7 +354,6 @@ class Scraper(ChromDevWrapper):
                 followers,
                 following,
                 likes,
-                " | ".join(links),
                 videos_num,
                 videos_views
             ]
@@ -419,7 +409,6 @@ class Scraper(ChromDevWrapper):
                 profile_details["followers"],
                 profile_details["following"],
                 profile_details["likes"],
-                profile_details["links"],
                 profile_details["videos_num"],
                 profile_details["videos_views"]
             )
