@@ -93,7 +93,6 @@ class Scraper(ChromDevWrapper):
             
         return scraped_profiles
             
-        
     def __load_content__(self, selector_elem: str, max_elem: int,
                          page_url: str = "") -> int:
         """ Go down to load page content
@@ -127,7 +126,7 @@ class Scraper(ChromDevWrapper):
             
         return new_rows_num
     
-    def __get_clean_counters__(self, counter:str) -> int:
+    def __get_clean_counters__(self, counter: str) -> int:
         """ Convert counters like 4.5K or 4.5M to int """
         
         if not counter:
@@ -145,7 +144,7 @@ class Scraper(ChromDevWrapper):
         return counter
         
     def search_profiles(self, keyword: str):
-        """ Search specific keyword in the website and load required profiles 
+        """ Search specific keyword in the website and load required profiles
         
         Args:
             keyword (str): Keyword to search
@@ -236,7 +235,8 @@ class Scraper(ChromDevWrapper):
             # Clean profile data
             profile_data["nickname"] = profile_data["nickname"].split(" · ")[0].strip()
             profile_data["link"] = f'https://www.tiktok.com{profile_data["link"]}'
-            profile_data["description"] = profile_data["description"].strip().replace("\n", " ")
+            profile_data["description"] = profile_data["description"].strip()
+            profile_data["description"] = profile_data["description"].replace("\n", " ")
         
             # Save profile data
             profiles_data.append(profile_data)
@@ -325,7 +325,10 @@ class Scraper(ChromDevWrapper):
                 
                 # Get elems attribs
                 if selector_name in selectors_sttribs:
-                    value = self.get_attrib(selector_elem, selectors_sttribs[selector_name])
+                    value = self.get_attrib(
+                        selector_elem,
+                        selectors_sttribs[selector_name]
+                    )
                 else:
                     value = self.get_text(selector_elem)
                 
@@ -362,9 +365,9 @@ class Scraper(ChromDevWrapper):
         pass
     
     def save_profile(self, username: str, nickname: str, description: str,
-                     profile_link: str, followers: int, following: int, likes: int, 
+                     profile_link: str, followers: int, following: int, likes: int,
                      videos_num: int, videos_views: int, keyword: str):
-        """ Save in csv profile data of a single user 
+        """ Save in csv profile data of a single user
         
         Args:
             username (str): Username of the profile
@@ -396,7 +399,7 @@ class Scraper(ChromDevWrapper):
             csv_file.writerow(row)
     
     def save_videos(self, username: str, videos_data: list):
-        """ Save in csv video data of a single user 
+        """ Save in csv video data of a single user
         
         Args:
             username (str): Username of the profile
@@ -435,7 +438,8 @@ class Scraper(ChromDevWrapper):
             for profile in profiles:
                 
                 profile_index = profiles.index(profile) + 1
-                print(f"\tProfile {profile_index}/{len(profiles)} ({profile['username']})...")
+                counter = f"{profile_index}/{len(profiles)}"
+                print(f"\tProfile {counter} ({profile['username']})...")
                 
                 # Get detailed profile data
                 profile_details = self.get_profile_details(profile["link"])
