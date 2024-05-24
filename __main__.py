@@ -358,7 +358,7 @@ class Scraper(ChromDevWrapper):
     
     def save_profile(self, username: str, nickname: str, description: str,
                      profile_link: str, followers: int, following: int, likes: int, 
-                     videos_num: int, videos_views: int):
+                     videos_num: int, videos_views: int, keyword: str):
         """ Save in csv profile data of a single user 
         
         Args:
@@ -371,12 +371,13 @@ class Scraper(ChromDevWrapper):
             likes (int): Number of likes
             videos_num (int): Number of videos
             videos_views (int): Number of videos views
+            keyword (str): Keyword used to search the profile
         """
         
         with open(self.profiles_path, "a", encoding="utf-8", newline='') as file:
             csv_file = csv.writer(file)
             row = [
-                KEYWORDS,
+                keyword,
                 username,
                 nickname,
                 description,
@@ -444,7 +445,8 @@ class Scraper(ChromDevWrapper):
                     profile_details["following"],
                     profile_details["likes"],
                     profile_details["videos_num"],
-                    profile_details["videos_views"]
+                    profile_details["videos_views"],
+                    keyword,
                 )
                 
                 # Save videos details
