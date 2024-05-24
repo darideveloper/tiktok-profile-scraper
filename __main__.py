@@ -130,10 +130,15 @@ class Scraper(ChromDevWrapper):
     def __get_clean_counters__(self, counter:str) -> int:
         """ Convert counters like 4.5K or 4.5M to int """
         
+        if not counter:
+            return 0
+        
         if "K" in counter:
             counter = int(float(counter.replace("K", "")) * 1000)
         elif "M" in counter:
             counter = int(float(counter.replace("M", "")) * 1000000)
+        elif "B" in counter:
+            counter = int(float(counter.replace("B", "")) * 1000000000)
         else:
             counter = int(counter)
             
