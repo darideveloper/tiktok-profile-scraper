@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from libs.chrome_dev import ChromDevWrapper
 load_dotenv()
 
-KEYWORDS = os.getenv("KEYWORDS")
+KEYWORDS = os.getenv("KEYWORDS").split(",")
 CHROME_PATH = os.getenv("CHROME_PATH")
 MAX_USERS = int(os.getenv("MAX_USERS"))
 MAX_VIDEOS = int(os.getenv("MAX_VIDEOS"))
@@ -35,6 +35,9 @@ class Scraper(ChromDevWrapper):
         # Create initial csv files
         self.__create_profiles_csv__()
         self.__create_videos_csv__()
+        
+        # Control variables
+        self.scraped_profiles = self.__get_csv_scraped_profiles__()
         
     def __create_profiles_csv__(self):
         """ Create profiles csv file if not exists """
@@ -75,6 +78,20 @@ class Scraper(ChromDevWrapper):
             ]
             csv_file = csv.writer(file)
             csv_file.writerow(columns)
+            
+    def __get_csv_scraped_profiles__(self) -> list:
+        """ get scraped profiles from csv file
+
+        Returns:
+            list: List of usernames
+        """
+        
+        with open(self.profiles_path, "r", encoding="utf-8") as file:
+            csv_file = csv.reader(file)
+            next(csv_file)
+            scraped_profiles = [row[1] for row in csv_file]
+            
+        return scraped_profiles
             
         
     def __load_content__(self, selector_elem: str, max_elem: int,
@@ -122,8 +139,12 @@ class Scraper(ChromDevWrapper):
             
         return counter
         
-    def search_profiles(self):
-        """ Search specific keyword in the website and load required profiles """
+    def search_profiles(self, keyword: str):
+        """ Search specific keyword in the website and load required profiles 
+        
+        Args:
+            keyword (str): Keyword to search
+        """
         
         selectors = {
             "search_bar": '[name="q"]',
@@ -131,14 +152,14 @@ class Scraper(ChromDevWrapper):
             "accounts_tab": '[aria-controls="tabs-0-panel-search_account"]'
         }
                 
-        print(f"Searching profiles with the keyword: {KEYWORDS}")
+        print(f"\n\nSearching profiles with the keyword: {keyword}")
         
         # Load page
         self.set_page("https://www.tiktok.com/")
         
         # Search in page
         sleep(3)
-        self.send_data(selectors["search_bar"], KEYWORDS)
+        self.send_data(selectors["search_bar"], keyword)
         sleep(1)
         self.click(selectors["search_button"])
         sleep(2)
@@ -171,8 +192,6 @@ class Scraper(ChromDevWrapper):
         print("Loading profiles...")
         
         profiles_found = self.__load_content__(selectors["row"], MAX_USERS)
-        if profiles_found > MAX_USERS:
-            profiles_found = MAX_USERS
         
         print(f"Profiles loaded: {profiles_found}")
         
@@ -180,6 +199,9 @@ class Scraper(ChromDevWrapper):
         
         profiles_data = []
         for index in range(profiles_found):
+            
+            if len(profiles_data) >= MAX_USERS:
+                break
             
             profile_data = {}
             
@@ -199,6 +221,12 @@ class Scraper(ChromDevWrapper):
                     value = self.get_text(selector_elem)
                     
                 profile_data[selector_name] = value
+                
+            # Skip profile if already scraped
+            if profile_data["username"] in self.scraped_profiles:
+                print(f"\t\tProfile {profile_data['username']} already scraped")
+                continue
+            self.scraped_profiles.append(profile_data["username"])
         
             # Clean profile data
             profile_data["nickname"] = profile_data["nickname"].split(" · ")[0].strip()
@@ -394,32 +422,34 @@ class Scraper(ChromDevWrapper):
     
     def autorun(self):
         
-        self.search_profiles()
-        profiles = scraper.get_profiles()
-        for profile in profiles:
-            
-            profile_index = profiles.index(profile) + 1
-            print(f"\tProfile {profile_index}/{len(profiles)} ({profile['username']})...")
-            
-            # Get detailed profile data
-            profile_details = self.get_profile_details(profile["link"])
-            
-            # Save profile details
-            self.save_profile(
-                profile["username"],
-                profile["nickname"],
-                profile["description"],
-                profile["link"],
-                profile_details["followers"],
-                profile_details["following"],
-                profile_details["likes"],
-                profile_details["videos_num"],
-                profile_details["videos_views"]
-            )
-            
-            # Save videos details
-            self.save_videos(profile["username"], profile_details["videos"])
-                        
+        for keyword in KEYWORDS:
+        
+            self.search_profiles(keyword)
+            profiles = scraper.get_profiles()
+            for profile in profiles:
+                
+                profile_index = profiles.index(profile) + 1
+                print(f"\tProfile {profile_index}/{len(profiles)} ({profile['username']})...")
+                
+                # Get detailed profile data
+                profile_details = self.get_profile_details(profile["link"])
+                
+                # Save profile details
+                self.save_profile(
+                    profile["username"],
+                    profile["nickname"],
+                    profile["description"],
+                    profile["link"],
+                    profile_details["followers"],
+                    profile_details["following"],
+                    profile_details["likes"],
+                    profile_details["videos_num"],
+                    profile_details["videos_views"]
+                )
+                
+                # Save videos details
+                self.save_videos(profile["username"], profile_details["videos"])
+                            
         print("Finished!")
         
         
