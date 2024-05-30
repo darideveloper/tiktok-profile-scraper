@@ -22,8 +22,10 @@ class Scraper(ChromDevWrapper):
         
         # Csv paths
         current_path = os.path.dirname(os.path.abspath(__file__))
-        self.profiles_path = os.path.join(current_path, "output", "profiles.csv")
-        self.videos_path = os.path.join(current_path, "output", "videos.csv")
+        output_path = os.path.join(current_path, "output")
+        os.makedirs(output_path, exist_ok=True)
+        self.profiles_path = os.path.join(output_path, "profiles.csv")
+        self.videos_path = os.path.join(output_path, "videos.csv")
         
         # Delete csv files in debug mode
         if DEBUG:
